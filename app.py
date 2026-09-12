@@ -10,8 +10,6 @@ app = Flask(__name__)
 app.secret_key = os.environ['FLASK_SECRET_KEY']
 
 UPLOAD_FOLDER = '/home/ryder2001/Documents'
-
-
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 #users FAAH
@@ -40,6 +38,26 @@ os.makedirs(uploadu3, exist_ok=True)
 os.makedirs(uploadu4, exist_ok=True)
 os.makedirs(uploadu5, exist_ok=True)
 
+
+USER_FOLDER = {
+    U1: uploadu1,
+    U2: uploadu2,
+    U3: uploadu3,
+    U4: uploadu4,
+    U5: uploadu5
+}
+
+USER_PASSWORD = {
+    U1: PU1,
+    U2: PU2,
+    U3: PU3,
+    U4: PU4,
+    U5: PU5
+}
+
+ADMIN_USER = U5
+
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -53,19 +71,8 @@ def login():
     if request.method == 'POST':
         user = request.form['username']
         pwd = request.form['password']
-        if user == U1 and pwd == PU1:
-            session['user'] = user
-            return redirect(url_for('index'))
-        elif user == U2 and pwd == PU2:
-            session['user'] = user
-            return redirect(url_for('index'))
-        elif user == U3 and pwd == PU3:
-            session['user'] = user
-            return redirect(url_for('index'))
-        elif user == U4 and pwd == PU4:
-            session['user'] = user
-            return redirect(url_for('index'))
-        elif user == U5 and pwd == PU5:
+        if user in USER_PASSWORDS and pwd == USER_PASSWORDS[user]:
+            session.clear()
             session['user'] = user
             return redirect(url_for('index'))
         return render_template('login.html', error='Invalid credentials')
@@ -75,6 +82,9 @@ def login():
 def logout():
     session.pop('user', None)
     return redirect(url_for('login'))
+
+def current_user_folder():
+    return redirect(url_for('index'))
 
 @app.route('/')
 @login_required
