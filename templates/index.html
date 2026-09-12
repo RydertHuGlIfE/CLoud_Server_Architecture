@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cloud Server.</title>
+  <link rel="icon" href="/templates/cloud.ico" type="image/x-icon">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+
+    @font-face {
+  font-family: 'prime';
+  src: url('/static/fonts/Transformers.ttf') format('truetype');
+}
+
+    body {
+      font-family: sans-serif;
+      background: linear-gradient(135deg, #001f3f, #203a43);
+      color: #fff;
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+    }
+    h1 { text-align: center; }
+    ul { list-style: none; padding-left: 0; }
+    li {
+      background: rgba(255,255,255,0.1);
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    a {
+      margin-left: 10px;
+      text-decoration: none;
+      color: #66ccff;
+    }
+    form {
+      background: rgba(255,255,255,0.1);
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+  #probar {
+    width: 100%;
+    height: 20px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 5px;
+    margin-top: 15px;
+    overflow: hidden;
+  }
+
+  #probar div {
+    height: 100%;
+    width: 0%;
+    background: limegreen;
+    text-align: center;
+    line-height: 20px;
+    color: white;
+    transition: width 0.3s;
+    }
+
+    button {
+      padding: 15px;
+      font-size: 1.1rem;
+      border: none;
+      background-color: #c516bc;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:hover { background-color: #b30068; }
+    .logout, .delete-all {
+      text-align: center;
+      margin: 20px;
+      font-family: 'prime'1;
+    }
+    .logout a, .delete-all a {
+      color: red;
+      font-weight: bold;
+      text-decoration: none;
+      font-family:Georgia, 'prime';
+      font-size: 1.2rem;
+      border: #432020;
+      border-color: #66ccff;
+    }
+    .folder {
+      font-weight: bold;
+      cursor: pointer;
+      padding: 8px;
+      background-color: rgba(255,255,255,0.1);
+      margin-top: 10px;
+      border-radius: 8px;
+    }
+    
+    input[type="file"] { margin-top: 5px; color: #fff; }
+    label { font-size: 1.1rem; font-weight: bold; }
+  </style>
+  <script>
+    function toggleFolder(id) {
+      const el = document.getElementById(id);
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+  </script>
+</head>
+<body>
+  <h1 style="font-family: 'prime', sans-serif; font-weight: 300;">☁️ Ryder's Cloud Server</h1>
+  
+
+
+  <div class="delete-all">
+    <a href="/delete_all" onclick="return confirm('Are you sure you want to delete ALL files and folders?')">🧨 Delete All Files</a>
+  </div>
+
+  {% for folder, files in tree.items() %}
+    {% set folder_id = 'f_' ~ loop.index %}
+    {% if folder %}
+      <div class="folder" onclick="toggleFolder('{{ folder_id }}')">📁 {{ folder }}</div>
+      <ul id="{{ folder_id }}" class="file-list">
+        <li>
+          <a href="/delete_folder/{{ folder }}" onclick="return confirm('Delete entire folder {{ folder }}?')">🗑️ Delete Folder</a>
+          |
+          <a href="/delete_files_in_folder/{{ folder }}" onclick="return confirm('Delete all files in {{ folder }}?')">🧹 Delete Files Only</a>
+        </li>
+    {% else %}
+      <ul id="{{ folder_id }}" class="file-list" style="display:block;">
+    {% endif %}
+      {% for file in files %}
+        <li class="file">
+          <span>{{ file }}</span>
+          <span>
+            {% set ext = file.split('.')[-1].lower() %}
+            {% if ext in ['pdf', 'png', 'jpg', 'jpeg', 'webp'] %}
+              <a href="/view/{{ folder ~ '/' if folder else '' }}{{ file }}" target="_blank">📘 View</a>
+            {% elif ext in ['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'] %}
+              <a href="https://docs.google.com/viewer?url={{ request.host_url }}view/{{ folder ~ '/' if folder else '' }}{{ file }}" target="_blank">👁️ View</a>
+            {% else %}
+              <span style="color: gray;">📘 No Preview</span>
+            {% endif %}
+            <a href="/download/{{ folder ~ '/' if folder else '' }}{{ file }}">⬇️</a>
+            <a href="/delete/{{ folder ~ '/' if folder else '' }}{{ file }}" onclick="return confirm('Delete {{ file }}?')">🗑️</a>
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endfor %}
+
+<form action="/upload_file" method="post" enctype="multipart/form-data">
+  <label for="single">📄 Upload Single/Multiple Files</label>
+  <input type="file" name="file" id="single" multiple>
+  <button type="submit">Upload Files</button>
+
+</form>
+
+<div id="probar"><div></div></div>
+<p id="status"></p>
+
+<script>
+document.querySelector('form[action="/upload_file"]').addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const form = e.target;
+  const fileInput = form.querySelector('input[type="file"]');
+  const files = fileInput.files;
+
+  if (!files.length) {
+    alert("Please select file(s) to upload.");
+    return;
+  }
+
+  const formData = new FormData();
+  for (let file of files) {
+    formData.append("file", file);
+  }
+
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", "/upload_file");
+
+  xhr.upload.onprogress = function(e) {
+    if (e.lengthComputable) {
+      const percent = Math.round((e.loaded / e.total) * 100);
+      const bar = document.querySelector("#probar div");
+      bar.style.width = percent + "%";
+      bar.style.background = "limegreen";
+      bar.textContent = percent + "%";
+    }
+  };
+
+  xhr.onload = function() {
+    if (xhr.status === 200) {
+      document.getElementById("status").textContent = "✅ Upload complete!";
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      document.getElementById("status").textContent = "❌ Upload failed.";
+    }
+  };
+
+  xhr.onerror = function() {
+    document.getElementById("status").textContent = "⚠️ Error uploading.";
+  };
+
+  xhr.send(formData);
+});
+</script>
+
+
+<!-- Upload Folder -->
+<form action="/upload_folder" method="post" enctype="multipart/form-data">
+  <label for="folder">📁 Upload Folder</label>
+  <input type="file" name="file" id="folder" webkitdirectory directory multiple>
+  <button type="submit">Upload Folder</button>
+</form>
+
+<script>
+document.querySelector('form[action="/upload_folder"]').addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const form = e.target;
+  const fileInput = form.querySelector('input[type="file"]');
+  const files = fileInput.files;
+
+  if (!files.length) {
+    alert("Please select a folder to upload.");
+    return;
+  }
+
+  const formData = new FormData();
+  for (let file of files) {
+    formData.append("file", file, file.webkitRelativePath); // <== important
+  }
+
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", "/upload_folder");
+
+  xhr.upload.onprogress = function(e) {
+    if (e.lengthComputable) {
+      const percent = Math.round((e.loaded / e.total) * 100);
+      const bar = document.querySelector("#probar div");
+      bar.style.width = percent + "%";
+      bar.style.background = "#28a745";
+      bar.textContent = percent + "%";
+    }
+  };
+
+  xhr.onload = function() {
+    if (xhr.status === 200) {
+      document.getElementById("status").textContent = "✅ Folder uploaded!";
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      document.getElementById("status").textContent = "❌ Upload failed.";
+    }
+  };
+
+  xhr.onerror = function() {
+    document.getElementById("status").textContent = "⚠️ Error uploading folder.";
+  };
+
+  xhr.send(formData);
+});
+</script>
+
+  <div class="logout">
+    <a href="/logout">🚪 Logout</a>
+  </div>
+</body>
+<script>
+  document.addEventListener("keydown", function (e) {
+    if ((e.ctrlKey && e.key === 'u') || e.key === 'F12') {
+      e.preventDefault();
+    }
+  });
+
+  document.addEventListener("contextmenu", function (e) {
+    e.preventDefault();
+  });
+</script>
+
+</html>
+
