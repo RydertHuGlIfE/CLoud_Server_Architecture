@@ -71,7 +71,7 @@ def login():
     if request.method == 'POST':
         user = request.form['username']
         pwd = request.form['password']
-        if user in USER_PASSWORDS and pwd == USER_PASSWORDS[user]:
+        if user in USER_PASSWORD and pwd == USER_PASSWORD[user]:
             session.clear()
             session['user'] = user
             return redirect(url_for('index'))
@@ -84,14 +84,26 @@ def logout():
     return redirect(url_for('login'))
 
 def current_user_folder():
-    return redirect(url_for('index'))
+    return USER_FOLDER[session['user']]
+
+def safe_user_path(relative_path):
+    user_folder = os.path.abspath(current_user_folder())
+    requested_path = os.path.abspath(
+        os.path.join(user_folder, relative_path)
+    )
+
+    if os.path.commonpath([user_folder, requested_path]) != user_folder:
+        return None
+
+    return requested_path
 
 @app.route('/')
 @login_required
 def index():
     tree = {}
-    for root, _, files in os.walk(UPLOAD_FOLDER):
-        rel_root = os.path.relpath(root, UPLOAD_FOLDER)
+    user_folder = current_user_folder()
+    for root, _, files in os.walk(user_folder):
+        rel_root = os.path.relpath(root, user_folder)
         if rel_root == ".":
             rel_root = ""
         folder = tree.setdefault(rel_root, [])
@@ -105,7 +117,9 @@ def upload_file_only():
     for file in files:
         if file.filename:
             filename = os.path.basename(file.filename)
-            full_path = os.path.join(UPLOAD_FOLDER, filename)
+            full_path = safe_user_path(filename)
+            if full_path is None:
+                return 'Invalid path', 400
             file.save(full_path)
     return redirect(url_for('index'))
 
@@ -116,7 +130,9 @@ def upload_folder_only():
     for file in files:
         if file.filename:
             safe_path = os.path.normpath(file.filename).lstrip(os.sep)
-            full_path = os.path.join(UPLOAD_FOLDER, safe_path)
+            full_path = safe_user_path(safe_path)
+            if full_path is None:
+                return 'Invalid path', 400
             os.makedirs(os.path.dirname(full_path), exist_ok=True)
             file.save(full_path)
     return redirect(url_for('index'))
@@ -125,29 +141,36 @@ def upload_folder_only():
 @app.route('/download/<path:filename>')
 @login_required
 def download_file(filename):
-    return send_from_directory(UPLOAD_FOLDER, filename, as_attachment=True)
+    file_path = safe_user_path(filename)
+    if file_path is None or not os.path.isfile(file_path):
+        return 'File not found', 404
+    return send_from_directory(
+        current_user_folder(),
+        os.path.relpath(file_path, current_user_folder()),
+        as_attachment=True
+    )
 
 @app.route('/delete/<path:filename>')
 @login_required
 def delete_file(filename):
-    file_path = os.path.join(UPLOAD_FOLDER, filename)
-    if os.path.isfile(file_path):
+    file_path = safe_user_path(filename)
+    if file_path is not None and os.path.isfile(file_path):
         os.remove(file_path)
     return redirect(url_for('index'))
 
 @app.route('/delete_folder/<path:foldername>')
 @login_required
 def delete_folder(foldername):
-    folder_path = os.path.join(UPLOAD_FOLDER, foldername)
-    if os.path.isdir(folder_path):
+    folder_path = safe_user_path(foldername)
+    if folder_path is not None and os.path.isdir(folder_path):
         shutil.rmtree(folder_path)
     return redirect(url_for('index'))
 
 @app.route('/delete_files_in_folder/<path:foldername>')
 @login_required
 def delete_files_in_folder(foldername):
-    folder_path = os.path.join(UPLOAD_FOLDER, foldername)
-    if os.path.exists(folder_path):
+    folder_path = safe_user_path(foldername)
+    if folder_path is not None and os.path.exists(folder_path):
         for f in os.listdir(folder_path):
             fp = os.path.join(folder_path, f)
             if os.path.isfile(fp):
@@ -157,7 +180,7 @@ def delete_files_in_folder(foldername):
 @app.route('/delete_all')
 @login_required
 def delete_all():
-    for root, dirs, files in os.walk(UPLOAD_FOLDER):
+    for root, dirs, files in os.walk(current_user_folder()):
         for file in files:
             os.remove(os.path.join(root, file))
         for dir in dirs:
@@ -165,10 +188,14 @@ def delete_all():
     return redirect(url_for('index'))
 
 @app.route('/view/<path:filename>')
+@login_required
 def view_file(filename):
-    file_path = os.path.join(UPLOAD_FOLDER, filename)
-    if os.path.exists(file_path):
-        return send_from_directory(UPLOAD_FOLDER, filename)
+    file_path = safe_user_path(filename)
+    if file_path is not None and os.path.isfile(file_path):
+        return send_from_directory(
+            current_user_folder(),
+            os.path.relpath(file_path, current_user_folder())
+        )
     return "File not found", 404
 
 if __name__ == '__main__':
