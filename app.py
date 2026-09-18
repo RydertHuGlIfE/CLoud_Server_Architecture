@@ -3,7 +3,6 @@ from functools import wraps
 import os
 import shutil
 from dotenv import load_dotenv
-import random 
 import secrets
 import string
 import time
@@ -146,6 +145,9 @@ def upload_file_only():
 @app.route('/upload_folder', methods=['POST'])
 @login_required
 def upload_folder_only():
+    alphabet = string.ascii_letters + string.digits
+    unique_id = ''.join(secrets.choice(alphabet) for _ in range(16))
+
     files = request.files.getlist('file')
     for file in files:
         if file.filename:
@@ -155,7 +157,7 @@ def upload_folder_only():
                 return 'Invalid path', 400
             os.makedirs(os.path.dirname(full_path), exist_ok=True)
             file.save(full_path)
-    return redirect(url_for('index'))
+    return unique_id
 
 
 @app.route('/download/<path:filename>')
