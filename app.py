@@ -3,6 +3,12 @@ from functools import wraps
 import os
 import shutil
 from dotenv import load_dotenv
+import random 
+import secrets
+import string
+import time
+
+active_uploads = {}
 
 load_dotenv()
 
@@ -113,6 +119,20 @@ def index():
 @app.route('/upload_file', methods=['POST'])
 @login_required
 def upload_file_only():
+    alphabet = string.ascii_letters + string.digits
+    unique_id = ''.join(secrets.choice(alphabet) for _ in range(16))
+  
+    temp_fol = os.path.join(current_user_folder(), unique_id)
+    os.makedirs(temp_fol, exist_ok=True)
+
+    active_uploads[unique_id] = {
+        'user': session['user'],
+        'expected_files': int(request.form.get('expected_files', 0)),
+        'recieved_files': [],
+        'created_at': time.time(),
+        'temp_folder': temp_fol
+    }
+
     files = request.files.getlist('file')
     for file in files:
         if file.filename:
