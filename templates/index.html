@@ -195,8 +195,8 @@ document.querySelector('form[action="/upload_file"]').addEventListener('submit',
 
   xhr.onload = function() {
     if (xhr.status === 200) {
-      document.getElementById("status").textContent = "✅ Upload complete!";
-      setTimeout(() => location.reload(), 1000);
+      document.getElementById("status").textContent = "✅ Upload complete! Unique ID: " + xhr.responseText;
+      setTimeout(() => location.reload(), 3000);
     } else {
       document.getElementById("status").textContent = "❌ Upload failed.";
     }
