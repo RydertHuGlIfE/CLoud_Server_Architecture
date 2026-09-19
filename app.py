@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 import secrets
 import string
 import time
-import posixpath
 
 active_uploads = {}
 
@@ -122,22 +121,11 @@ def upload_file_only():
     alphabet = string.ascii_letters + string.digits
     unique_id = ''.join(secrets.choice(alphabet) for _ in range(16))
   
-    upload_folder = os.path.join(current_user_folder(), unique_id)
-    os.makedirs(upload_folder, exist_ok=True)
-
-    active_uploads[unique_id] = {
-        'user': session['user'],
-        'expected_files': int(request.form.get('expected_files', 0)),
-        'recieved_files': [],
-        'created_at': time.time(),
-        'temp_folder': upload_folder
-    }
-
     files = request.files.getlist('file')
     for file in files:
         if file.filename:
             filename = os.path.basename(file.filename)
-            full_path = safe_user_path(os.path.join(unique_id, filename))
+            full_path = safe_user_path(filename)
             if full_path is None:
                 return 'Invalid path', 400
             file.save(full_path)
@@ -152,10 +140,10 @@ def upload_folder_only():
     files = request.files.getlist('file')
     for file in files:
         if file.filename:
-            safe_path = posixpath.normpath(file.filename.replace('\\', '/')).lstrip('/')
+            safe_path = os.path.normpath(file.filename).lstrip(os.sep)
             path_parts = safe_path.split('/')
             relative_path = '/'.join(path_parts[1:]) if len(path_parts) > 1 else safe_path
-            full_path = safe_user_path(os.path.join(unique_id, relative_path))
+            full_path = safe_user_path(relative_path)
             if full_path is None:
                 return 'Invalid path', 400
             os.makedirs(os.path.dirname(full_path), exist_ok=True)
