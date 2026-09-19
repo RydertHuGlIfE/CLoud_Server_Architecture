@@ -251,8 +251,8 @@ document.querySelector('form[action="/upload_folder"]').addEventListener('submit
 
   xhr.onload = function() {
     if (xhr.status === 200) {
-      document.getElementById("status").textContent = "✅ Folder uploaded!";
-      setTimeout(() => location.reload(), 1000);
+      document.getElementById("status").textContent = "✅ Folder uploaded! Unique ID: " + xhr.responseText;
+      setTimeout(() => location.reload(), 3000);
     } else {
       document.getElementById("status").textContent = "❌ Upload failed.";
     }
