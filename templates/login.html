@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>Login</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
   <style>
     body {
       margin: 0;
@@ -17,6 +17,7 @@
       height: 100vh;
       color: white;
     }
+
     form {
       background-color: rgba(255, 255, 255, 0.1);
       padding: 30px;
@@ -27,101 +28,68 @@
       width: 300px;
       gap: 15px;
     }
-    input, button {
+
+    input,
+    button {
       padding: 12px;
       border: none;
       border-radius: 8px;
       font-size: 16px;
     }
+
     input {
       background: white;
       color: black;
     }
+
     button {
       background: #007bff;
       color: white;
       font-weight: bold;
       cursor: pointer;
     }
+
     button:hover {
       background: #0056b3;
     }
+
     .error {
       color: #ff4c4c;
       font-weight: bold;
       text-align: center;
     }
-    .toggle-link {
-      color: #007bff;
-      text-align: center;
-      cursor: pointer;
-    }
   </style>
 </head>
+
 <body>
-  <form id="auth-form">
+
+  <form action="{{ url_for('login') }}" method="POST">
+
     <h2>🔐 Login</h2>
-    <p class="error" id="error-message"></p>
-    <input type="text" id="username" name="username" placeholder="Username" required />
-    <input type="password" id="password" name="password" placeholder="Password" required />
+
+    {% if error %}
+      <p class="error">{{ error }}</p>
+    {% endif %}
+
+    <input
+      type="text"
+      name="username"
+      placeholder="Username"
+      required
+      autocomplete="username"
+    />
+
+    <input
+      type="password"
+      name="password"
+      placeholder="Password"
+      required
+      autocomplete="current-password"
+    />
+
     <button type="submit">Login</button>
-    <p class="toggle-link" id="toggle-link">Don't have an account? Register here.</p>
+
   </form>
 
-  <script>
-    const supabaseUrl = 'https://your-project-url.supabase.co';
-    const supabaseKey = 'your-anon-key';
-    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
-
-    const form = document.getElementById('auth-form');
-    const errorMessage = document.getElementById('error-message');
-    const toggleLink = document.getElementById('toggle-link');
-
-    let isRegistering = false;
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-
-      const username = document.getElementById('username').value;
-      const password = document.getElementById('password').value;
-
-      if (isRegistering) {
-        const { user, error } = await supabase.auth.signUp({
-          email: username,
-          password: password
-        });
-
-        if (error) {
-          errorMessage.textContent = `Registration failed: ${error.message}`;
-        } else {
-          window.location.href = '/dashboard';
-        }
-      } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: username,
-          password: password
-        });
-
-        if (error) {
-          errorMessage.textContent = `Login failed: ${error.message}`;
-        } else {
-          window.location.href = '/dashboard';
-        }
-      }
-    });
-
-    toggleLink.addEventListener('click', () => {
-      isRegistering = !isRegistering;
-      if (isRegistering) {
-        document.querySelector('h2').textContent = '🔐 Register';
-        document.querySelector('button').textContent = 'Register';
-        toggleLink.textContent = 'Already have an account? Login here.';
-      } else {
-        document.querySelector('h2').textContent = '🔐 Login';
-        document.querySelector('button').textContent = 'Login';
-        toggleLink.textContent = 'Don\'t have an account? Register here.';
-      }
-    });
-  </script>
 </body>
 </html>
