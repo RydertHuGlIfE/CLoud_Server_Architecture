@@ -115,6 +115,9 @@ def index():
         folder.extend(files)
     return render_template('index.html', tree=tree)
 
+
+
+
 @app.route('/upload_file', methods=['POST'])
 @login_required
 def upload_file_only():
@@ -151,6 +154,44 @@ def upload_folder_only():
     return unique_id
 
 
+#adding chunking weeeeeeeeee
+CHUNK_SIZE = 16 * 1024 * 1024
+
+
+@app.route('/chunk/<path:filename>', methods=['POST'])
+@login_required
+def chunk_file(filename):
+
+    chunk_num = request.form.get('chunk_num', type=int)
+    total_chunks = request.form.get('total_chunks', type=int)
+
+    chunk = request.files.get('chunk')
+
+    if chunk is None:
+        return "No chunk received", 400
+
+    if chunk_num is None or total_chunks is None:
+        return "Missing chunk information", 400
+
+    if chunk_num < 0 or chunk_num >= total_chunks:
+        return "Invalid chunk number", 400
+
+    file_path = safe_user_path(filename)
+
+    if file_path is None:
+        return "Invalid path", 400
+
+    chunk_offset = chunk_num * CHUNK_SIZE
+
+    if not os.path.exists(file_path):
+        open(file_path, 'wb').close()
+
+    with open(file_path, 'r+b') as f:
+        f.seek(chunk_offset)
+        chunk.save(f)
+
+    return "Chunk received", 200
+
 @app.route('/download/<path:filename>')
 @login_required
 def download_file(filename):
@@ -163,6 +204,9 @@ def download_file(filename):
         as_attachment=True
     )
 
+
+
+
 @app.route('/delete/<path:filename>')
 @login_required
 def delete_file(filename):
@@ -171,6 +215,9 @@ def delete_file(filename):
         os.remove(file_path)
     return redirect(url_for('index'))
 
+
+
+
 @app.route('/delete_folder/<path:foldername>')
 @login_required
 def delete_folder(foldername):
@@ -178,6 +225,7 @@ def delete_folder(foldername):
     if folder_path is not None and os.path.isdir(folder_path):
         shutil.rmtree(folder_path)
     return redirect(url_for('index'))
+
 
 @app.route('/delete_files_in_folder/<path:foldername>')
 @login_required
